@@ -1,0 +1,159 @@
+/* Main container */
+.playground {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #2b2b2b;
+  color: #ffffff;
+  font-family: Arial, sans-serif;
+}
+
+/* Editor area */
+.editor {
+  display: flex;
+  flex-grow: 1;
+  border-top: 2px solid #444;
+  border-bottom: 1px solid #444;
+  flex-direction: column;
+}
+
+/* Side navbar (file tree) */
+.side-navbar {
+  width: 100%;
+  max-width: 300px;
+  background-color: #1e1e1e;
+  color: #ddd;
+  padding: 15px;
+  border-right: 2px solid #444;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* Styling for files and folders */
+.files .is-file {
+  color: #c5c5c5;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.files .is-folder {
+  font-weight: bold;
+  color: #ffd700; /* Gold color for folders */
+}
+
+.files ul {
+  margin-top: 5px;
+  padding-left: 15px;
+}
+
+/* Editor panel */
+.edit {
+  flex-grow: 1;
+  padding: 20px;
+  background-color: #1e1e1e;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+/* Editor text styles */
+.edit h3 {
+  color: #e0e0e0;
+  font-size: 1.2em;
+}
+
+.edit p {
+  font-size: 0.9em;
+  margin: 10px 0;
+}
+
+.edit .saved {
+  color: green;
+}
+
+.edit .unsaved {
+  color: red;
+}
+
+/* Terminal area */
+.terminal {
+  background-color: #333;
+  color: #d3d3d3;
+  padding: 15px;
+  font-family: monospace;
+  overflow-y: auto;
+  scrollbar-width: none;
+  height: auto;
+  border-radius: 20px;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* Hide scrollbar while keeping the ability to scroll */
+.side-navbar, .edit, .terminal {
+  overflow: hidden;
+}
+
+.side-navbar:hover, .edit:hover, .terminal:hover {
+  overflow-y: auto;
+}
+
+.side-navbar::-webkit-scrollbar,
+.edit::-webkit-scrollbar,
+.terminal::-webkit-scrollbar {
+  display: none; /* For Chrome, Safari, and Edge */
+}
+
+/* For Firefox */
+.side-navbar {
+  scrollbar-width: none;
+}
+
+/* Additional styles for mobile view */
+@media (max-width: 767px) {
+  .playground {
+    padding: 10px;
+  }
+
+  .side-navbar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 2px solid #444;
+    padding: 10px;
+  }
+
+  .edit {
+    padding: 10px;
+    scrollbar-width: none;
+  }
+
+  .terminal {
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  .editor {
+    flex-direction: column;
+  }
+}
+
+/* Media queries for responsiveness */
+@media (min-width: 768px) {
+  .editor {
+    flex-direction: row;
+  }
+
+  .side-navbar {
+    width: 250px;
+  }
+}
+
+@media (max-width: 767px) {
+  .side-navbar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 2px solid #444;
+  }
+
+  .edit {
+    padding: 10px;
+  }
+}

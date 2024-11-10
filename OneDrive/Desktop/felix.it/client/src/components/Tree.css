@@ -1,0 +1,29 @@
+.file-tree-item {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    font-family: Arial, sans-serif;
+    color: #ffffff;
+}
+
+.file-tree-item.folder {
+    font-weight: bold;
+}
+
+.file-tree-item.file {
+    color: #555;
+}
+
+.file-tree {
+    list-style: none;
+    padding-left: 20px;
+}
+
+.folder-icon {
+    margin-right: 5px;
+    transition: transform 0.2s ease;
+}
+
+.folder-icon.open {
+    transform: rotate(90deg);
+}

@@ -1,0 +1,27 @@
+
+  /* Make the text glow */
+  .xterm .xterm-text {
+    text-shadow: 0 0 5px #ffcc00, 0 0 10px #ffcc00, 0 0 15px #ffcc00;
+  }
+  
+  /* Highlight selected text */
+  .xterm .xterm-selection {
+    background-color: rgba(0, 255, 255, 0.5); /* Cyan selection */
+  }
+  
+  /* Cursor styling */
+  .xterm .xterm-cursor {
+    background-color: #ffcc00; /* Yellow cursor */
+  }
+  
+  /* Smooth transition effects for text hover */
+  .xterm .xterm-text:hover {
+    color: #00ff00; /* Change text color on hover */
+    background-color: rgba(0, 0, 0, 0.6); /* Darken background slightly on hover */
+  }
+  
+  /* Disable focus outline for a cleaner look */
+  .xterm .xterm-text:focus {
+    outline: none;
+  }
+  
