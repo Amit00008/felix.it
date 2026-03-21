@@ -4,6 +4,7 @@ import socket from '../socket';
 const IDEContext = createContext(null);
 
 const API = import.meta.env.VITE_API_URL;
+const INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000;
 
 export function IDEProvider({ children, token, projectName }) {
   const [fileTree, setFileTree] = useState({});
@@ -169,20 +170,96 @@ export function IDEProvider({ children, token, projectName }) {
     };
   }, []);
 
-  // Authenticate socket with project info on mount
+  // Authenticate socket and recover terminal state after reconnect
   useEffect(() => {
-    socket.emit('authenticate', { token, project: projectName });
-
     const handleReconnect = () => {
       setTerminals([]);
       setActiveTerminalId(null);
       terminalCountRef.current = 0;
       setContainerReady(false);
+      setContainerStatus({ status: 'starting', message: 'Starting your workspace...' });
       socket.emit('authenticate', { token: tokenRef.current, project: projectRef.current });
     };
+
+    if (!socket.connected) {
+      socket.connect();
+    } else {
+      handleReconnect();
+    }
+
     socket.on('connect', handleReconnect);
-    return () => socket.off('connect', handleReconnect);
+    return () => {
+      socket.off('connect', handleReconnect);
+    };
   }, [token, projectName]);
+
+  // Pause workspace when tab is hidden or user is idle; reconnect on activity
+  useEffect(() => {
+    let idleTimer;
+
+    const clearIdleTimer = () => {
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+      }
+    };
+
+    const pauseWorkspace = (message) => {
+      if (!socket.connected) return;
+      setContainerReady(false);
+      setContainerStatus({ status: 'paused', message });
+      socket.disconnect();
+    };
+
+    const scheduleIdlePause = () => {
+      clearIdleTimer();
+      if (document.hidden) return;
+      idleTimer = setTimeout(() => {
+        pauseWorkspace('Workspace paused due to inactivity');
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const handleUserActivity = () => {
+      if (document.hidden) return;
+      if (!socket.connected) {
+        setContainerReady(false);
+        setContainerStatus({ status: 'starting', message: 'Starting your workspace...' });
+        socket.connect();
+      }
+      scheduleIdlePause();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        pauseWorkspace('Workspace paused while tab is hidden');
+      } else {
+        handleUserActivity();
+      }
+    };
+
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'focus'];
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, handleUserActivity, { passive: true });
+    });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    if (document.hidden) {
+      pauseWorkspace('Workspace paused while tab is hidden');
+    } else {
+      scheduleIdlePause();
+    }
+
+    return () => {
+      clearIdleTimer();
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, handleUserActivity);
+      });
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (socket.connected) {
+        socket.disconnect();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const handleContainerStatus = (data) => {

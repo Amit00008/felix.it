@@ -19,8 +19,10 @@ const docker = process.env.DOCKER_HOST
   : new Docker({ socketPath: process.platform === 'win32' ? '//./pipe/dockerDesktopLinuxEngine' : '/var/run/docker.sock' });
 const DOCKER_IMAGE = 'ubuntu:22.04';
 const USER_DATA_DIR = path.join(__dirname, 'user-data');
+const CONTAINER_STOP_GRACE_MS = Math.max(0, parseInt(process.env.CONTAINER_STOP_GRACE_MS || '10000', 10));
 
 const socatPromises = new Map();
+const containerStopTimers = new Map();
 
 function previewAuthMiddleware(req, res, next) {
   try {
@@ -117,6 +119,46 @@ app.use(cors());
 // --- Per-user session tracking ---
 const userSessions = new Map();
 
+function hasActiveSession(userId) {
+  for (const session of userSessions.values()) {
+    if (session.userId === userId) return true;
+  }
+  return false;
+}
+
+function clearContainerStopTimer(userId) {
+  const timer = containerStopTimers.get(userId);
+  if (timer) {
+    clearTimeout(timer);
+    containerStopTimers.delete(userId);
+  }
+}
+
+async function stopContainerIfRunning(userId, reason) {
+  const name = `felix-${userId}`;
+  try {
+    const container = docker.getContainer(name);
+    const info = await container.inspect();
+    if (!info.State.Running) return;
+    await container.stop({ t: 10 });
+    console.log(`Stopped container ${name} (${reason})`);
+  } catch (err) {
+    if (err.statusCode !== 404) {
+      console.error(`Failed to stop container ${name}:`, err.message);
+    }
+  }
+}
+
+function scheduleContainerStop(userId, reason) {
+  clearContainerStopTimer(userId);
+  const timer = setTimeout(async () => {
+    containerStopTimers.delete(userId);
+    if (hasActiveSession(userId)) return;
+    await stopContainerIfRunning(userId, reason);
+  }, CONTAINER_STOP_GRACE_MS);
+  containerStopTimers.set(userId, timer);
+}
+
 // --- Docker container management ---
 function getUserWorkspacePath(userId) {
   return path.join(USER_DATA_DIR, userId, 'workspace');
@@ -209,6 +251,7 @@ io.on('connection', (socket) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const userId = decoded.id;
       socket.userId = userId;
+      clearContainerStopTimer(userId);
 
       // Clean up existing session if re-authenticating on same socket
       const existing = userSessions.get(socket.id);
@@ -358,7 +401,10 @@ io.on('connection', (socket) => {
         session.watcher.close();
       }
       userSessions.delete(socket.id);
-      console.log(`🔌 User ${session.userId} disconnected, session cleaned up (container kept running)`);
+      if (!hasActiveSession(session.userId)) {
+        scheduleContainerStop(session.userId, 'user disconnected or inactive');
+      }
+      console.log(`🔌 User ${session.userId} disconnected, session cleaned up`);
     } else {
       console.log('Client disconnected (no session)');
     }
